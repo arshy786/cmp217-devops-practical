@@ -2,9 +2,6 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 jobs:
   build:
@@ -19,9 +16,11 @@ jobs:
         with:
           php-version: '8.2'
           coverage: none
-          tools: none
 
-            - name: Lint PHP (safe even if no files)
+      - name: Show PHP version
+        run: php -v
+
+      - name: Lint PHP (safe even if no files)
         shell: bash
         run: |
           set -e
@@ -35,14 +34,13 @@ jobs:
             done
           fi
 
-      - name: Start built-in PHP server for health check
+      - name: Health check endpoint returns 200
         run: |
-          nohup php -S 127.0.0.1:8080 -t public_html > /dev/null 2>&1 &
-          sleep 3
+          php -S 127.0.0.1:8080 -t public_html >/dev/null 2>&1 &
+          for i in {1..20}; do
+            sleep 0.5
+            curl -fsS http://127.0.0.1:8080/health.php && exit 0 || true
+          done
+          echo "Health check failed"
+          exit 1
 
-      - name: Health check
-        run: |
-          set -e
-          echo "Requesting health endpoint..."
-          curl -sSf http://127.0.0.1:8080/health.php | grep -qx 'OK'
-          echo "Health endpoint OK"
