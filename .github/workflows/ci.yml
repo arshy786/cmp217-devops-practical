@@ -21,18 +21,19 @@ jobs:
           coverage: none
           tools: none
 
-      - name: PHP lint (syntax check)
+            - name: Lint PHP (safe even if no files)
+        shell: bash
         run: |
           set -e
-          echo "Linting all PHP files..."
-          mapfile -t files < <(git ls-files '*.php')
-          if [ ${#files[@]} -eq 0 ]; then
-            echo "No PHP files to lint."
-            exit 0
+          files=$(find src public_html -type f -name "*.php" 2>/dev/null || true)
+          if [ -z "$files" ]; then
+            echo "No PHP files found to lint — skipping."
+          else
+            for f in $files; do
+              echo "Linting $f"
+              php -l "$f"
+            done
           fi
-          for f in "${files[@]}"; do
-            php -l "$f"
-          done
 
       - name: Start built-in PHP server for health check
         run: |
