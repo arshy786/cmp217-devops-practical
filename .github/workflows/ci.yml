@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+          tools: none
+
+      - name: PHP lint (syntax check)
+        run: |
+          set -e
+          echo "Linting all PHP files..."
+          mapfile -t files < <(git ls-files '*.php')
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No PHP files to lint."
+            exit 0
+          fi
+          for f in "${files[@]}"; do
+            php -l "$f"
+          done
+
+      - name: Start built-in PHP server for health check
+        run: |
+          nohup php -S 127.0.0.1:8080 -t public_html > /dev/null 2>&1 &
+          sleep 3
+
+      - name: Health check
+        run: |
+          set -e
+          echo "Requesting health endpoint..."
+          curl -sSf http://127.0.0.1:8080/health.php | grep -qx 'OK'
+          echo "Health endpoint OK"
